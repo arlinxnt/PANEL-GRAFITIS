@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>HUB LMA</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            /* iOS System Colors */
+            --ios-bg: #000000;
+            --ios-card: rgba(28, 28, 30, 0.65);
+            --ios-card-border: rgba(255, 255, 255, 0.12);
+            --ios-blue: #0A84FF;
+            --ios-green: #30D158;
+            --ios-red: #FF453A;
+            --ios-gray: #8E8E93;
+            --ios-gray2: #636366;
+            --ios-gray6: #1C1C1E;
+            --ios-separator: rgba(84, 84, 88, 0.65);
+
+            /* Typography */
+            --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+            /* Effects */
+            --blur-heavy: blur(40px) saturate(180%);
+            --blur-light: blur(20px) saturate(180%);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
+
+            /* Animation Physics */
+            --spring-bounce: cubic-bezier(0.32, 0.72, 0, 1);
+            --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-stack);
+            background: transparent;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Override para elementos interactivos - DEFAULT */
+        button,
+        a,
+        input,
+        select,
+        .card,
+        .timer-row,
+        label {
+            cursor: pointer;
+        }
+
+        /* FONDO NEGRO DE RESPALDO */
+        .bg-fallback {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: -5;
+        }
+
+        /* BACKGROUND VIDEO & OVERLAY */
+        #video-fondo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            transform: scale(1.05);
+        }
+
+        .app-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: -1;
+        }
+
+        /* UTILS */
+        .btn-scale {
+            transition: transform 0.2s var(--spring-bounce);
+        }
+
+        .btn-scale:active {
+            transform: scale(0.94);
+            opacity: 0.8;
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+        /* --- LOGIN SCREEN --- */
+        #login-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            z-index: 1000;
+            padding-bottom: 15vh;
+            background: transparent;
+            transition: opacity 0.5s ease, backdrop-filter 0.5s ease;
+        }
+
+        .login-content {
+            width: 85%;
+            max-width: 360px;
+            background: rgba(30, 30, 30, 0.65);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 38px;
+            padding: 30px 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            text-align: center;
+            transform: translateY(100px);
+            opacity: 0;
+            animation: slideUp 0.8s var(--spring-bounce) forwards;
+        }
+
+        @keyframes slideUp {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .login-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .ios-input {
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 14px;
+            border: none;
+            background: rgba(118, 118, 128, 0.24);
+            color: white;
+            font-size: 17px;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        .ios-input:focus {
+            background: rgba(118, 118, 128, 0.4);
+            outline: none;
+        }
+
+        .ios-input::placeholder {
+            color: rgba(235, 235, 245, 0.6);
+        }
+
+        .btn-ios-primary {
+            width: 100%;
+            padding: 16px;
+            background: var(--ios-blue);
+            color: white;
+            font-weight: 600;
+            font-size: 17px;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* --- APP CONTENT --- */
+        #app-content {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        header {
+            flex-shrink: 0;
+            padding: 60px 20px 15px 20px;
+            background: rgba(20, 20, 20, 0.75);
+            backdrop-filter: var(--blur-heavy);
+            -webkit-backdrop-filter: var(--blur-heavy);
+            border-bottom: 0.5px solid var(--ios-separator);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            position: relative;
+            z-index: 100;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header-title small {
+            font-size: 13px;
+            color: var(--ios-gray);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            padding-bottom: 4px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(60, 60, 67, 0.6);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+
+        #main-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        #container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            padding-bottom: 100px;
+        }
+
+        /* --- CARDS & WIDGETS --- */
+        .card {
+            background: var(--ios-card);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 22px;
+            border: 1px solid var(--ios-card-border);
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+            animation: popIn 0.6s var(--spring-bounce);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
+            /* Acercarse un poquito */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .card:active {
+            transform: scale(0.97) !important;
+            /* Prioridad sobre hover */
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .card-media {
+            height: 160px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .card-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-content {
+            padding: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .card-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+            max-width: 80%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .timer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(118, 118, 128, 0.12);
+            padding: 8px 12px;
+            margin-bottom: 1px;
+            font-variant-numeric: tabular-nums;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.3s, border-color 0.3s;
+            border-left: 4px solid transparent;
+            /* Default transparent */
+        }
+
+        .timer-row.active-stage {
+            border-left-color: var(--ios-blue);
+            background: rgba(10, 132, 255, 0.1);
+            /* Sutil highlight azul */
+        }
+
+        .timer-row.completed {
+            border-left-color: var(--ios-green);
+            background: rgba(48, 209, 88, 0.08);
+            /* Fondo verde sutil */
+        }
+
+        .timer-row.completed span {
+            opacity: 0.5;
+        }
+
+        .timer-row:first-of-type {
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .timer-row:last-of-type {
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        .expiration-status {
+            margin-top: 12px;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ios-red);
+            background: rgba(255, 69, 58, 0.1);
+            border-radius: 8px;
+        }
+
+        #btn-add {
+            position: fixed;
+            bottom: 30px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            background: var(--ios-blue);
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 32px;
+            font-weight: 300;
+            box-shadow: 0 8px 25px rgba(10, 132, 255, 0.4);
+            z-index: 500;
+            display: none;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- SHEETS & MODALS --- */
+        .sheet-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .sheet-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sheet {
+            background: #1C1C1E;
+            width: 100%;
+            max-width: 500px;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            padding-bottom: 40px;
+            transform: translateY(100%);
+            transition: transform 0.4s var(--spring-bounce);
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .sheet-overlay.show .sheet {
+            transform: translateY(0);
+        }
+
+        @media(min-width: 600px) {
+            .sheet-overlay {
+                align-items: center;
+            }
+
+            .sheet {
+                border-radius: 20px;
+                transform: scale(0.9) translateY(20px);
+                opacity: 0;
+            }
+
+            .sheet-overlay.show .sheet {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .drag-handle {
+            width: 40px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 0 auto 20px auto;
+        }
+
+        .ios-form-group {
+            background: rgba(44, 44, 46, 1);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .ios-field {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(84, 84, 88, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ios-field:last-child {
+            border-bottom: none;
+        }
+
+        .ios-field label {
+            font-size: 12px;
+            color: var(--ios-gray);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* CORRECCIÓN: Estilos más suaves para Inputs y Selects */
+        .ios-field select,
+        .ios-field input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 17px;
+            width: 100%;
+            outline: none;
+            font-family: var(--font-stack);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        /* Flecha custom para selects */
+        .ios-field select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(235,235,245,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right center;
+            background-size: 16px;
+        }
+
+        .ios-field select option {
+            background-color: #1C1C1E;
+            color: white;
+        }
+
+        /* Contenedor de Preview */
+        .preview-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .preview-box {
+            height: 100px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 10px;
+            text-align: center;
+            padding: 4px;
+            backdrop-filter: blur(4px);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .btn-sheet-action {
+            width: 100%;
+            padding: 18px;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: rgba(44, 44, 46, 1);
+            color: var(--ios-red);
+        }
+
+        #viewer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #viewer-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #viewer-img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s var(--spring-bounce);
+        }
+
+        #viewer-overlay.show #viewer-img {
+            transform: scale(1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- VIDEO BACKGROUND -->
+    <div class="bg-fallback"></div>
+    <video autoplay muted loop playsinline id="video-fondo">
+        <source src="fondo.mp4" type="video/mp4">
+    </video>
+    <div class="app-overlay"></div>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen">
+        <!-- Mute Button Login -->
+        <button id="login-mute-btn" onclick="toggleMute()"
+            style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.15); border: none; border-radius: 50%; width: 40px; height: 40px; color: white; backdrop-filter: blur(10px); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1001;">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.536 8.464a5 5 0 010 7.072M12 18.5l-5-3.5H4a1 1 0 01-1-1v-4a1 1 0 011-1h3l5-3.5v12z" />
+            </svg>
+        </button>
+
+        <div class="login-content">
+            <div class="login-avatar">
+                <svg width="40" height="40" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+            </div>
+            <h2 style="margin: 0 0 20px 0; font-weight: 600;">Bienvenido</h2>
+
+            <input type="email" id="log-email" class="ios-input" placeholder="Correo electrónico">
+            <input type="password" id="log-pass" class="ios-input" placeholder="Contraseña">
+
+            <button class="btn-ios-primary btn-scale" onclick="login()">Desbloquear</button>
+
+            <p style="margin-top:20px; font-size:12px; color:rgba(255,255,255,0.4);" id="login-msg">Ingresa tus
+                credenciales</p>
+        </div>
+    </div>
+
+    <!-- Script Listeners Login -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Escuchar Enter en inputs de login
+            const inputs = [document.getElementById('log-email'), document.getElementById('log-pass')];
+            inputs.forEach(input => {
+                if (input) {
+                    input.addEventListener("keyup", function (event) {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            login();
+                        }
+                    });
+                }
+            });
+            // Intentar iniciar audio suave al cargar (si el navegador deja)
+            attemptAudio();
+        });
+    </script>
+
+    <!-- INTERFAZ PRINCIPAL APP -->
+    <div id="app-content">
+        <header>
+            <div class="header-title">
+                <small id="user-info">Cargando...</small>
+                <h1>PANEL LMA</h1>
+            </div>
+            <div class="header-controls">
+                <!-- Botón Configuración (Solo Admin) -->
+                <button class="icon-btn btn-scale" id="btn-admin-config" onclick="abrirConfig()"
+                    style="display:none; margin-right: 8px;">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <button class="icon-btn btn-scale" id="btn-admin-gestion" onclick="abrirPanelUser()"
+                    style="display:none;">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+                <button class="icon-btn btn-scale" onclick="toggleMute()" id="mute-btn">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.536 8.464a5 5 0 010 7.072M12 18.5l-5-3.5H4a1 1 0 01-1-1v-4a1 1 0 011-1h3l5-3.5v12z" />
+                    </svg>
+                </button>
+                <button class="icon-btn btn-scale" onclick="logout()"
+                    style="color:var(--ios-red); background: rgba(255, 69, 58, 0.15);">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div id="main-scroll">
+            <div id="container">
+                <!-- CARDS INSERTED VIA JS -->
+            </div>
+        </div>
+
+        <button id="btn-add" class="btn-scale" onclick="showSheet('modal-registro')">+</button>
+    </div>
+
+    <!-- SHEET: REGISTRO -->
+    <div id="modal-registro" class="sheet-overlay" onclick="handleSheetClick(event, this)">
+        <div class="sheet">
+            <div class="drag-handle"></div>
+            <h3 style="margin-top:0; font-size:20px; margin-bottom:20px; text-align:center;">Nuevo Registro</h3>
+
+            <div class="ios-form-group">
+                <div class="ios-field">
+                    <label>Propiedad</label>
+                    <select id="reg-tipo" onchange="toggleOtraBanda()">
+                        <option value="NUESTRO">NUESTRO (LMA)</option>
+                        <option value="OTRA">OTRA ORGANIZACIÓN</option>
+                    </select>
+                </div>
+                <!-- Input condicional -->
+                <div class="ios-field" id="field-otra-banda" style="display:none;">
+                    <label>Nombre de organización</label>
+                    <input type="text" id="prop-nombre" placeholder="Ej: Vagos">
+                </div>
+            </div>
+
+            <div class="ios-form-group">
+                <div class="ios-field">
+                    <label>Zona General</label>
+                    <select id="zona-select" onchange="actualizarLugares()">
+                        <option value="" disabled selected>Selecciona...</option>
+                        <option value="ubicaciones_fijas">Ubicaciones Fijas</option>
+                        <option value="chamberlain">Chamberlain Hills</option>
+                        <option value="banning">Banning</option>
+                        <option value="burro">El Burro Heights</option>
+                        <option value="cypress">Cypress Flats</option>
+                        <option value="mesa">La Mesa</option>
+                        <option value="murrieta">Murrieta Heights</option>
+                        <option value="rancho">Rancho</option>
+                        <option value="davis">Davis</option>
+                    </select>
+                </div>
+                <!-- Preview Container Integrado -->
+                <div id="modal-preview" class="preview-container">
+                    <div class="preview-box">
+                        <img id="pre-lugar" src="">
+                        <div class="preview-label">Lugar</div>
+                    </div>
+                    <div class="preview-box">
+                        <img id="pre-mapa" src="">
+                        <div class="preview-label">Mapa</div>
+                    </div>
+                </div>
+
+                <div class="ios-field">
+                    <label>Lugar Específico</label>
+                    <select id="lugar-select" disabled onchange="mostrarPreview()">
+                        <option>Primero selecciona zona</option>
+                    </select>
+                </div>
+                <div class="ios-field">
+                    <label>Hora incio</label>
+                    <input type="time" id="horaInicio">
+                </div>
+            </div>
+
+            <button class="btn-sheet-action btn-primary btn-scale" onclick="agregar()">Registrar</button>
+            <button class="btn-sheet-action btn-cancel btn-scale"
+                onclick="hideSheet('modal-registro')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- SHEET: CONFIGURACION -->
+    <div id="modal-config" class="sheet-overlay" onclick="handleSheetClick(event, this)">
+        <div class="sheet">
+            <div class="drag-handle"></div>
+            <h3 style="margin-top:0; margin-bottom:20px; text-align:center;">Configuración de Alertas</h3>
+
+            <div class="ios-form-group">
+                <div class="ios-field">
+                    <label>Webhook: Nuevos Registros 🟢</label>
+                    <input type="text" id="cfg-webhook-reg" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+                <div class="ios-field" style="border-bottom:none;">
+                    <label>Webhook: Alertas de Tiempo ⚠️</label>
+                    <input type="text" id="cfg-webhook-alert" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+            </div>
+            <p style="font-size:12px; color:gray; padding:0 10px; margin-bottom:20px;">
+                Separa los canales si lo deseas. El primero avisa cuando alguien registra. El segundo avisa cuando falta
+                1h, 30m o expira.
+            </p>
+
+            <button class="btn-sheet-action btn-primary btn-scale" onclick="guardarConfig()">Guardar
+                Configuración</button>
+            <button class="btn-sheet-action btn-cancel btn-scale" onclick="hideSheet('modal-config')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- SHEET: USUARIOS -->
+    <div id="modal-users" class="sheet-overlay" onclick="handleSheetClick(event, this)">
+        <div class="sheet">
+            <div class="drag-handle"></div>
+            <h3 style="margin-top:0; margin-bottom:20px; text-align:center;">Gestión de Usuarios</h3>
+
+            <div class="ios-form-group">
+                <div class="ios-field"><label>Email</label><input type="email" id="new-email"
+                        placeholder="email@ejemplo.com"></div>
+                <div class="ios-field"><label>Contraseña</label><input type="text" id="new-pass" placeholder="123456">
+                </div>
+                <div class="ios-field">
+                    <label>Rango</label>
+                    <select id="new-rank">
+                        <option value="MIEMBRO">MIEMBRO</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-sheet-action btn-primary btn-scale" onclick="crearUsuario()">Crear Usuario</button>
+
+            <div style="margin-top:20px;">
+                <h4 style="margin-bottom:10px; color:var(--ios-gray);">Usuarios Activos</h4>
+                <div id="user-list" class="ios-form-group">
+                    <!-- Lista de usuarios -->
+                </div>
+            </div>
+
+            <button class="btn-sheet-action btn-cancel btn-scale" onclick="hideSheet('modal-users')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- SHEET: DEFENDER -->
+    <div id="modal-defender" class="sheet-overlay" onclick="handleSheetClick(event, this)">
+        <div class="sheet" style="padding-bottom:30px;">
+            <div class="drag-handle"></div>
+            <h3 style="margin-top:0; margin-bottom:15px; text-align:center;">Defender Grafiti</h3>
+            <p style="text-align:center; color:gray; font-size:13px; margin-bottom:20px;">Ingresa la hora en la que se
+                defendió el grafiti para reiniciar los contadores.</p>
+
+            <input type="hidden" id="defender-id">
+            <div class="ios-form-group">
+                <div class="ios-field" style="border:none;">
+                    <label>Nueva Hora Inicio</label>
+                    <input type="time" id="defender-hora">
+                </div>
+            </div>
+
+            <button class="btn-sheet-action btn-primary btn-scale" onclick="confirmarDefensa()"
+                style="background:#FF9500;">Actualizar Contadores</button>
+            <button class="btn-sheet-action btn-cancel btn-scale"
+                onclick="hideSheet('modal-defender')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- IMAGE VIEWER -->
+    <div id="viewer-overlay" onclick="this.classList.remove('show')">
+        <img id="viewer-img" src="">
+    </div>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const datosZonas = {
+            "ubicaciones_fijas": {
+                "Aeropuerto": { foto: "lugares/aeropuerto.jpg", mapa: "lugares/aeropuerto_mapa.jpg" },
+                "La Puerta": { foto: "lugares/puerta.jpg", mapa: "lugares/puerta_mapa.jpg" },
+                "Tataviam": { foto: "lugares/tataviam.jpg", mapa: "lugares/tataviam_mapa.jpg" },
+                "Mazebank Arena": { foto: "lugares/mazebank.jpg", mapa: "lugares/mazebank_mapa.jpg" },
+                "Strawberry": { foto: "lugares/strawberry.jpg", mapa: "lugares/strawberry_mapa.jpg" },
+                "Elysian Island": { foto: "lugares/elysian.jpg", mapa: "lugares/elysian_mapa.jpg" }
+            },
+            "chamberlain": {
+                "1. CHAMBER (REJAS)": { foto: "lugares/chamber_rejas.jpg", mapa: "lugares/chamber_rejas_mapa.jpg" },
+                "2. CHAMBER (CALLEJÓN)": { foto: "lugares/chamber_callejon.jpg", mapa: "lugares/chamber_callejon_mapa.jpg" }
+            },
+            "banning": {
+                "1. BANNING (LEJOS)": { foto: "lugares/banning_lejos.jpg", mapa: "lugares/banning_lejos_mapa.jpg" },
+                "2. BANNING (XERO CUSTOM)": { foto: "lugares/banning_xero.jpg", mapa: "lugares/banning_xero_mapa.jpg" },
+                "3. BANNING (PARED DE CHAPA)": { foto: "lugares/banning_chapa.jpg", mapa: "lugares/banning_chapa_mapa.jpg" },
+                "4. BANNING (BAJO PUENTE)": { foto: "lugares/banning_puente.jpg", mapa: "lugares/banning_puente_mapa.jpg" }
+            },
+            "burro": {
+                "Burro (Al frente de Tatuaje)": { foto: "lugares/burro_tatuaje.jpg", mapa: "lugares/burro_tatuaje_mapa.jpg" },
+                "Burro (Mini Garage)": { foto: "lugares/burro_garage.jpg", mapa: "lugares/burro_garage_mapa.jpg" },
+                "Burro (Dealer de Burro)": { foto: "lugares/burro_dealer.jpg", mapa: "lugares/burro_dealer_mapa.jpg" },
+                "Burro (Camino de Tierra)": { foto: "lugares/burro_tierra.jpg", mapa: "lugares/burro_tierra_mapa.jpg" },
+                "Burro (Contenedor)": { foto: "lugares/burro_contenedor.jpg", mapa: "lugares/burro_contenedor_mapa.jpg" }
+            },
+            "cypress": {
+                "1. CYPRESS (DEALER / CURVA)": { foto: "lugares/cypress_dealer.jpg", mapa: "lugares/cypress_dealer_mapa.jpg" },
+                "2. CYPRESS (CONTENEDOR)": { foto: "lugares/cypress_contenedor.jpg", mapa: "lugares/cypress_contenedor_mapa.jpg" },
+                "3. CYPRESS (ATRÁS CARNICERÍA)": { foto: "lugares/cypress_atras.jpg", mapa: "lugares/cypress_atras_mapa.jpg" },
+                "4. CYPRESS (CARNICERÍA)": { foto: "lugares/cypress_carniceria.jpg", mapa: "lugares/cypress_carniceria_mapa.jpg" },
+                "5. CYPRESS (ESCALERAS / ITX)": { foto: "lugares/cypress_escaleras.jpg", mapa: "lugares/cypress_escaleras_mapa.jpg" }
+            },
+            "mesa": {
+                "1. MESA (FALSO / CALLEJÓN)": { foto: "lugares/mesa_falso.jpg", mapa: "lugares/mesa_falso_mapa.jpg" },
+                "2. MESA (CAMINOS TIERRA)": { foto: "lugares/mesa_tierra.jpg", mapa: "lugares/mesa_tierra_mapa.jpg" },
+                "3. LA MESA (TREVOR / BAJO PUENTE)": { foto: "lugares/mesa_trevor.jpg", mapa: "lugares/mesa_trevor_mapa.jpg" },
+                "4. LA MESA (ATRÁS ALMACÉN)": { foto: "lugares/mesa_almacen.jpg", mapa: "lugares/mesa_almacen_mapa.jpg" },
+                "5. LA MESA (ATRÁS ARCADE)": { foto: "lugares/mesa_arcade.jpg", mapa: "lugares/mesa_arcade_mapa.jpg" },
+                "6. LA MESA (CANALES)": { foto: "lugares/mesa_canales.jpg", mapa: "lugares/mesa_canales_mapa.jpg" }
+            },
+            "murrieta": {
+                "Murrieta Heights (Fundidora)": { foto: "lugares/murrieta_fundidora.jpg", mapa: "lugares/murrieta_fundidora_mapa.jpg" },
+                "Murrieta Heights (Atrás de gaso gris)": { foto: "lugares/murrieta_gaso.jpg", mapa: "lugares/murrieta_gaso_mapa.jpg" },
+                "Murrieta Heights (Atrás de Redwood / Al lado de gaso gris)": { foto: "lugares/murrieta_redwood.jpg", mapa: "lugares/murrieta_redwood_mapa.jpg" },
+                "Murrieta Heights (Licorería)": { foto: "lugares/murrieta_licoreria.jpg", mapa: "lugares/murrieta_licoreria_mapa.jpg" }
+            },
+            "rancho": {
+                "Rancho (Césped)": { foto: "lugares/rancho_cesped.jpg", mapa: "lugares/rancho_cesped_mapa.jpg" },
+                "Rancho (Patio)": { foto: "lugares/rancho_patio.jpg", mapa: "lugares/rancho_patio_mapa.jpg" },
+                "Rancho (Atrás de HP)": { foto: "lugares/rancho_hp_atras.jpg", mapa: "lugares/rancho_hp_atras_mapa.jpg" },
+                "Rancho (Bloques atrás de HP)": { foto: "lugares/rancho_bloques.jpg", mapa: "lugares/rancho_bloques_mapa.jpg" },
+                "Rancho (BarrioComando / Foco)": { foto: "lugares/rancho_foco.jpg", mapa: "lugares/rancho_foco_mapa.jpg" },
+                "Rancho (Bajo Puente)": { foto: "lugares/rancho_puente.jpg", mapa: "lugares/rancho_puente_mapa.jpg" },
+                "Rancho (Motel Gaucho)": { foto: "lugares/rancho_motel.jpg", mapa: "lugares/rancho_motel_mapa.jpg" },
+                "Rancho (Atomic)": { foto: "lugares/rancho_atomic.jpg", mapa: "lugares/rancho_atomic_mapa.jpg" },
+                "Rancho (Techo / Tejado Atomic)": { foto: "lugares/rancho_techo.jpg", mapa: "lugares/rancho_techo_mapa.jpg" },
+                "Rancho (Curva Dealer)": { foto: "lugares/rancho_curva.jpg", mapa: "lugares/rancho_curva_mapa.jpg" }
+            },
+            "davis": {
+                "Davis (Arcade/Garage)": { foto: "lugares/davis_arcade.jpg", mapa: "lugares/davis_arcade_mapa.jpg" },
+                "Davis (Darknet)": { foto: "lugares/davis_darknet.jpg", mapa: "lugares/davis_darknet_mapa.jpg" },
+                "Davis (Canales)": { foto: "lugares/davis_canales.jpg", mapa: "lugares/davis_canales_mapa.jpg" },
+                "Davis (Megamall)": { foto: "lugares/davis_megamall.jpg", mapa: "lugares/davis_megamall_mapa.jpg" },
+                "Davis (Barbería)": { foto: "lugares/davis_barberia.jpg", mapa: "lugares/davis_barberia_mapa.jpg" },
+                "Davis (Gaso gris)": { foto: "lugares/davis_gaso.jpg", mapa: "lugares/davis_gaso_mapa.jpg" },
+                "Davis (Callejón Barderos)": { foto: "lugares/davis_barderos.jpg", mapa: "lugares/davis_barderos_mapa.jpg" },
+                "Davis (Vías)": { foto: "lugares/davis_vias.jpg", mapa: "lugares/davis_vias_mapa.jpg" },
+                "Davis (Cerrajería)": { foto: "lugares/davis_cerrajeria.jpg", mapa: "lugares/davis_cerrajeria_mapa.jpg" }
+            }
+        };
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5fo5-cxNPMC7HYGjFBs8n48lJE6bvioA",
+            authDomain: "panel-lma.firebaseapp.com",
+            databaseURL: "https://panel-lma-default-rtdb.firebaseio.com",
+            projectId: "panel-lma",
+            storageBucket: "panel-lma.firebasestorage.app",
+            messagingSenderId: "474615537478",
+            appId: "1:474615537478:web:669bf9379ea23d3dca0f47"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let sesion = null;
+        let webhookRegistro = null;
+        let webhookAlertas = null;
+
+        // --- APP LOGIC ---
+
+        function login() {
+            const e = document.getElementById('log-email').value;
+            const p = document.getElementById('log-pass').value;
+            const msg = document.getElementById('login-msg');
+
+            msg.innerText = "Verificando...";
+
+            // Backdoor Admin Original (Preservado)
+            if (e === "adminadoni@gmail.com" && p === "1464864") {
+                iniciarApp({ email: e, rank: 'ADMIN' }); return;
+            }
+
+            db.ref('usuarios').once('value', s => {
+                const u = s.val(); let found = false;
+                if (u) {
+                    for (let id in u) {
+                        if (u[id].email === e && u[id].pass === p) {
+                            iniciarApp(u[id]); found = true; break;
+                        }
+                    }
+                }
+                if (!found) {
+                    msg.innerText = "Credenciales incorrectas";
+                    msg.style.color = "var(--ios-red)";
+                    // Shake animation effect
+                    const box = document.querySelector('.login-content');
+                    box.style.transform = "translateX(5px)";
+                    setTimeout(() => box.style.transform = "translateX(-5px)", 50);
+                    setTimeout(() => box.style.transform = "translateX(5px)", 100);
+                    setTimeout(() => box.style.transform = "translateX(0)", 150);
+                }
+            });
+        }
+
+        function iniciarApp(user) {
+            sesion = user;
+            // Cargar Configuración Global
+            db.ref('config').once('value', s => {
+                const conf = s.val();
+                if (conf) {
+                    if (conf.webhook_reg) webhookRegistro = conf.webhook_reg;
+                    if (conf.webhook_alert) webhookAlertas = conf.webhook_alert;
+                }
+            });
+
+            // Animación de salida login
+            const loginScreen = document.getElementById('login-screen');
+            loginScreen.style.opacity = '0';
+            setTimeout(() => {
+                loginScreen.style.display = 'none';
+                document.getElementById('app-content').style.display = 'flex';
+                document.getElementById('user-info').innerText = user.rank;
+
+                // Botones admin
+                if (user.rank === 'ADMIN') {
+                    document.getElementById('btn-admin-gestion').style.display = 'flex';
+                    document.getElementById('btn-admin-config').style.display = 'flex';
+                    document.getElementById('btn-add').style.display = 'flex';
+                }
+
+                syncLogs();
+                // Play audio logic
+                attemptAudio();
+            }, 500);
+
+            // Guardar sesion simple
+            localStorage.setItem('hub_lma_user', JSON.stringify(user));
+        }
+
+        function logout() {
+            sesion = null;
+            localStorage.removeItem('hub_lma_user');
+            window.location.reload();
+        }
+
+        // --- GESTIÓN DE REGISTROS ---
+        function agregar() {
+            if (sesion.rank !== 'ADMIN') return;
+
+            const z = document.getElementById('zona-select').value;
+            const lug = document.getElementById('lugar-select').value;
+            const h = document.getElementById('horaInicio').value;
+            const t = document.getElementById('reg-tipo').value;
+            let prop = t === 'NUESTRO' ? 'PULPOS LMA' : document.getElementById('prop-nombre').value;
+
+            if (!lug || !h || (t === 'OTRA' && !prop)) {
+                alert("Completa todos los campos");
+                return;
+            }
+
+            const newRef = db.ref('logs').push();
+            const logData = {
+                lugar: lug, tipo: t, prop: prop || 'Desconocido',
+                imgLugar: datosZonas[z][lug].foto,
+                imgMapa: datosZonas[z][lug].mapa,
+                inicio: h
+            };
+
+            newRef.set(logData).then(() => {
+                // Notificar Nuevo Registro
+                sendDiscordWebhook(logData, 'NUEVO');
+            });
+
+            hideSheet('modal-registro');
+            // Reset fields
+            document.getElementById('lugar-select').innerHTML = '<option>Primero selecciona zona</option>';
+            document.getElementById('lugar-select').disabled = true;
+            document.getElementById('zona-select').value = "";
+            document.getElementById('modal-preview').style.display = 'none';
+        }
+
+        // --- RENDERIZADO Y TIMERS ---
+        function syncLogs() {
+            db.ref('logs').on('value', snap => {
+                const cont = document.getElementById('container');
+                cont.innerHTML = '';
+                const data = snap.val();
+
+                if (!data) {
+                    cont.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:gray; margin-top:50px;">No hay registros activos</div>';
+                    return;
+                }
+
+                Object.keys(data).forEach(id => {
+                    const r = data[id];
+                    if (sesion.rank === 'MIEMBRO' && r.tipo === 'OTRA') return; // Filtro miembro
+
+                    const isMine = r.tipo === 'NUESTRO';
+                    const badgeColor = isMine ? 'var(--ios-green)' : 'var(--ios-red)';
+                    const badgeBg = isMine ? 'rgba(48, 209, 88, 0.2)' : 'rgba(255, 69, 58, 0.2)';
+
+                    // Botón cerrar (Solo admin)
+                    let delBtn = '';
+                    let defBtn = '';
+                    if (sesion.rank === 'ADMIN') {
+                        delBtn = `<button onclick="db.ref('logs').child('${id}').remove()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; border:none; width:28px; height:28px; border-radius:50%; font-weight:bold; cursor:pointer; z-index:2;">✕</button>`;
+                        defBtn = `<button onclick="abrirDefender('${id}')" style="margin-top:8px; width:100%; padding:8px; background:rgba(255,149,0,0.15); color:#FF9500; border:none; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">🛡️ DEFENDIDO</button>`;
+                    }
+
+                    // Card HTML
+                    let timersHTML = [12, 13, 14, 15].map(hs => {
+                        const target = getUTC(r.inicio, hs);
+                        const targetStr = `${target.getUTCHours().toString().padStart(2, '0')}:${target.getUTCMinutes().toString().padStart(2, '0')}`;
+                        return `<div class="timer-row" id="row-${id}-${hs}">
+                                    <span style="opacity:0.8">+${hs}h (${targetStr})</span>
+                                    <span id="t-${id}-${hs}" style="font-family:'Courier New', monospace">...</span>
+                                </div>`;
+                    }).join('');
+
+                    cont.innerHTML += `
+                        <div class="card btn-scale">
+                            ${delBtn}
+                            <div class="card-media">
+                                <img src="${r.imgLugar}" onclick="openViewer(this.src)">
+                                <img src="${r.imgMapa}" onclick="openViewer(this.src)">
+                            </div>
+                            <div class="card-content">
+                                <div class="card-header">
+                                    <h3 class="card-title">${r.lugar}</h3>
+                                    <span class="card-badge" style="color:${badgeColor}; background:${badgeBg}">${r.prop}</span>
+                                </div>
+                                ${timersHTML}
+                                <div class="expiration-status" id="exp-${id}">Calculando...</div>
+                                ${defBtn}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // --- TIMER LOGIC (Preservada) ---
+        function getUTC(horaStr, hSuma) {
+            let [h, m] = horaStr.split(':').map(Number);
+            let d = new Date();
+            d.setUTCHours(h + hSuma, m, 0, 0);
+            return d;
+        }
+        function timerFmt(ms) {
+            if (ms <= 0) return "00:00:00";
+            let h = Math.floor(ms / 3600000).toString().padStart(2, '0'),
+                m = Math.floor((ms % 3600000) / 60000).toString().padStart(2, '0'),
+                s = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        // --- SISTEMA DE NOTIFICACIONES DISCORD --- //
+        // --- SISTEMA DE NOTIFICACIONES DISCORD (UPDATE) --- //
+        setInterval(() => {
+            const ahora = new Date();
+            db.ref('logs').once('value', snap => {
+                const data = snap.val(); if (!data) return;
+                Object.keys(data).forEach(id => {
+                    const r = data[id];
+                    // Referencias de tiempo
+                    const inicio = getUTC(r.inicio, 0); // Hora base
+                    const diffMs = ahora - inicio; // Milisegundos transcurridos
+                    const minutosTranscurridos = Math.floor(diffMs / 60000); // Minutos totales desde inicio
+
+                    // --- UI UPDATES (Timers & Dynamic Bar) ---
+                    let activeFound = false;
+
+                    [12, 13, 14, 15].forEach(hs => {
+                        const targetTime = getUTC(r.inicio, hs);
+                        const timeLeft = targetTime - ahora;
+                        const minutesLeft = Math.floor(timeLeft / 60000);
+
+                        const tH = document.getElementById(`t-${id}-${hs}`);
+                        const rH = document.getElementById(`row-${id}-${hs}`);
+
+                        if (tH) tH.innerText = timerFmt(timeLeft);
+
+                        if (rH) {
+                            // Limpiar clases previas
+                            rH.classList.remove('completed', 'active-stage');
+
+                            if (timeLeft <= 0) {
+                                rH.classList.add('completed');
+                            } else {
+                                // Si este es el primer timer NO completado, es la etapa activa
+                                if (!activeFound) {
+                                    rH.classList.add('active-stage');
+                                    activeFound = true;
+                                }
+                            }
+                        }
+
+                        // --- AUDIO LOGIC --- 
+                        const audioKeyPrefix = `audio_${id}_${hs}`;
+
+                        // Lógica 12h: 1h antes, 30m antes, Fin
+                        if (hs === 12) {
+                            checkAudioTrigger(id, minutesLeft, 60, `${audioKeyPrefix}_60m`);
+                            checkAudioTrigger(id, minutesLeft, 30, `${audioKeyPrefix}_30m`);
+                            checkAudioTrigger(id, minutesLeft, 0, `${audioKeyPrefix}_0m`);
+                        }
+                        // Lógica 13, 14, 15h: 30m antes, Fin
+                        else {
+                            checkAudioTrigger(id, minutesLeft, 30, `${audioKeyPrefix}_30m`);
+                            checkAudioTrigger(id, minutesLeft, 0, `${audioKeyPrefix}_0m`);
+                        }
+                    });
+
+                    // Update Status Text (usando 15h como fin absoluto)
+                    const end15 = getUTC(r.inicio, 15);
+                    const diffEnd = end15 - ahora;
+                    const el = document.getElementById(`exp-${id}`);
+                    if (el) {
+                        if (diffEnd <= 0) {
+                            el.innerText = "EXPIRADO";
+                            el.style.color = "gray";
+                            el.style.background = "rgba(255,255,255,0.1)";
+                        } else {
+                            el.innerText = "EXPIRA EN " + timerFmt(diffEnd);
+                        }
+                    }
+
+                    // --- CHECK ALERTAS AUTOMÁTICAS ---
+                    if (!webhookAlertas) return;
+                    if (r.tipo === 'OTRA') return; // Seguridad extra
+
+                    // Hitos en minutos desde el inicio:
+                    // 12h (1h antes)  => Avisar a las 11h  = 660 min
+                    // 13h (1.5h antes)=> Avisar a las 11.5h= 690 min
+                    // 14h (1.5h antes)=> Avisar a las 12.5h= 750 min
+                    // 15h (1.5h antes)=> Avisar a las 13.5h= 810 min
+
+                    // Ventana de disparo: 2 minutos (para no perder el tick si hay lag)
+                    // checkAlert(id, registro, keyFlag, targetMinutes, typeLabel)
+
+                    // 1. Alerta de 12h (Aviso 1h antes -> 11h elapsed)
+                    if (minutosTranscurridos >= 660 && minutosTranscurridos < 662 && !r.alert_12_pre) {
+                        db.ref(`logs/${id}`).update({ alert_12_pre: true });
+                        sendDiscordWebhook(r, 'PRE_12');
+                    }
+
+                    // 2. Alerta de 13h (Aviso 1.5h antes -> 11h 30m elapsed)
+                    if (minutosTranscurridos >= 690 && minutosTranscurridos < 692 && !r.alert_13_pre) {
+                        db.ref(`logs/${id}`).update({ alert_13_pre: true });
+                        sendDiscordWebhook(r, 'PRE_13');
+                    }
+
+                    // 3. Alerta de 14h (Aviso 1.5h antes -> 12h 30m elapsed)
+                    if (minutosTranscurridos >= 750 && minutosTranscurridos < 752 && !r.alert_14_pre) {
+                        db.ref(`logs/${id}`).update({ alert_14_pre: true });
+                        sendDiscordWebhook(r, 'PRE_14');
+                    }
+
+                    // 4. Alerta de 15h (Aviso 1.5h antes -> 13h 30m elapsed)
+                    if (minutosTranscurridos >= 810 && minutosTranscurridos < 812 && !r.alert_15_pre) {
+                        db.ref(`logs/${id}`).update({ alert_15_pre: true });
+                        sendDiscordWebhook(r, 'PRE_15');
+                    }
+                });
+            });
+        }, 1000);
+
+        function sendDiscordWebhook(data, type) {
+            // CANCELLATION FOR OTHER ORGS: Si no es NUESTRO, no enviamos nada al Discord.
+            if (data.tipo === 'OTRA') return;
+
+            let targetURL = null;
+
+            if (type === 'NUEVO' || type === 'DEFENDIDO') targetURL = webhookRegistro; // Defensa va al mismo canal de registros
+            else targetURL = webhookAlertas;
+
+            if (!targetURL) return;
+
+            let title, color, desc;
+            const imgUrl = new URL(data.imgLugar, window.location.href).href;
+
+            if (type === 'NUEVO') {
+                title = "📍 NUEVO GRAFITI REGISTRADO";
+                color = 3066993; // Verde
+                desc = `El grafiti **${data.lugar}** ha sido registrado por **${data.prop}**.`;
+            } else if (type === 'DEFENDIDO') {
+                title = "🛡️ GRAFITI DEFENDIDO";
+                color = 16750848; // Naranja
+                desc = `El grafiti **${data.lugar}** ha sido defendido. Nuevo ciclo iniciado.`;
+            } else if (type === 'DEFENDIDO') {
+                title = "🛡️ GRAFITI DEFENDIDO";
+                color = 16750848; // Naranja
+                desc = `El grafiti **${data.lugar}** ha sido defendido. Nuevo ciclo iniciado.`;
+
+                // --- NUEVAS ALERTAS ---
+            } else if (type === 'PRE_12') {
+                title = "⏳ ALERTA 12H (Falta 1 Hora)";
+                color = 0x0A84FF; // Azul
+                desc = `El grafiti de **${data.lugar}** cumple 12 horas en 60 minutos.`;
+            } else if (type === 'PRE_13') {
+                title = "⚠️ ALERTA 13H (Falta 1h 30m)";
+                color = 0xFFD60A; // Amarillo
+                desc = `ATENCIÓN: Faltan 90 minutos para las 13hs en **${data.lugar}**.`;
+            } else if (type === 'PRE_14') {
+                title = "🚨 ALERTA 14H (Falta 1h 30m)";
+                color = 0xFF9F0A; // Naranja Fuerte
+                desc = `ATENCIÓN: Faltan 90 minutos para las 14hs en **${data.lugar}**.`;
+            } else if (type === 'PRE_15') {
+                title = "🔥 ALERTA 15H (Falta 1h 30m)";
+                color = 0xFF453A; // Rojo
+                desc = `URGENTE: Faltan 90 minutos para las 15hs en **${data.lugar}**.`;
+            }
+
+            const payload = {
+                embeds: [{
+                    title: title,
+                    description: desc,
+                    color: color,
+                    fields: [
+                        { name: "Propiedad", value: data.prop, inline: true },
+                        { name: "Hora inicio (IC)", value: data.inicio, inline: true }
+                    ],
+                    image: { url: imgUrl },
+                    footer: { text: "Sistema de Alertas Automático LMA" },
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            fetch(targetURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(e => console.error("Error enviando webhook:", e));
+        }
+
+
+        // --- UI HELPERS ---
+        function toggleOtraBanda() {
+            const val = document.getElementById('reg-tipo').value;
+            document.getElementById('field-otra-banda').style.display = (val === 'OTRA' ? 'flex' : 'none');
+        }
+
+        function actualizarLugares() {
+            const z = document.getElementById('zona-select').value;
+            const sel = document.getElementById('lugar-select');
+            sel.innerHTML = '<option value="" disabled selected>Elige Lugar...</option>';
+            sel.disabled = false;
+            Object.keys(datosZonas[z]).forEach(l => {
+                let opt = document.createElement('option');
+                opt.value = l;
+                opt.innerText = l;
+                sel.appendChild(opt);
+            });
+            document.getElementById('modal-preview').style.display = 'none';
+        }
+
+        function mostrarPreview() {
+            const z = document.getElementById('zona-select').value;
+            const l = document.getElementById('lugar-select').value;
+            if (!l) return;
+            document.getElementById('pre-lugar').src = datosZonas[z][l].foto;
+            document.getElementById('pre-mapa').src = datosZonas[z][l].mapa;
+            document.getElementById('modal-preview').style.display = 'grid';
+        }
+
+        function showSheet(id) { document.getElementById(id).classList.add('show'); }
+        function hideSheet(id) { document.getElementById(id).classList.remove('show'); }
+        function handleSheetClick(e, el) { if (e.target === el) hideSheet(el.id); }
+
+        function openViewer(src) {
+            document.getElementById('viewer-img').src = src;
+            document.getElementById('viewer-overlay').classList.add('show');
+        }
+
+        function abrirPanelUser() { showSheet('modal-users'); listarUsuarios(); }
+
+        // Configuración
+        function abrirConfig() {
+            showSheet('modal-config');
+            if (webhookRegistro) document.getElementById('cfg-webhook-reg').value = webhookRegistro;
+            if (webhookAlertas) document.getElementById('cfg-webhook-alert').value = webhookAlertas;
+        }
+        function guardarConfig() {
+            const urlReg = document.getElementById('cfg-webhook-reg').value;
+            const urlAlert = document.getElementById('cfg-webhook-alert').value;
+
+            db.ref('config').update({
+                webhook_reg: urlReg,
+                webhook_alert: urlAlert
+            }).then(() => {
+                alert("Configuración guardada");
+                webhookRegistro = urlReg;
+                webhookAlertas = urlAlert;
+                hideSheet('modal-config');
+            });
+        }
+
+        function crearUsuario() {
+            const e = document.getElementById('new-email').value;
+            const p = document.getElementById('new-pass').value;
+            const r = document.getElementById('new-rank').value;
+            if (e && p) {
+                db.ref('usuarios').push({ email: e, pass: p, rank: r }).then(() => {
+                    alert("Usuario creado");
+                    document.getElementById('new-email').value = "";
+                    document.getElementById('new-pass').value = "";
+                    listarUsuarios();
+                });
+            }
+        }
+
+        function listarUsuarios() {
+            db.ref('usuarios').on('value', s => {
+                const div = document.getElementById('user-list');
+                div.innerHTML = '';
+                const u = s.val();
+                if (u) {
+                    for (let id in u) {
+                        div.innerHTML += `
+                            <div class="ios-field" style="flex-direction:row; justify-content:space-between; align-items:center;">
+                                <span style="font-size:14px;">${u[id].email} <small style="color:gray;">(${u[id].rank})</small></span>
+                                <button onclick="db.ref('usuarios').child('${id}').remove()" style="color:var(--ios-red); background:none; border:none; cursor:pointer;">Eliminar</button>
+                            </div>`;
+                    }
+                }
+            });
+        }
+
+
+
+        // --- DEFENSA LOGIC ---
+        function abrirDefender(id) {
+            document.getElementById('defender-id').value = id;
+            showSheet('modal-defender');
+        }
+
+        function confirmarDefensa() {
+            const id = document.getElementById('defender-id').value;
+            const h = document.getElementById('defender-hora').value;
+
+            if (!h) { alert("Ingresa una hora"); return; }
+
+            // 1. Obtener datos actuales
+            db.ref(`logs/${id}`).once('value', snapshot => {
+                const currentData = snapshot.val();
+                if (!currentData) return;
+
+                // Resetear flags de audio locales (opcional si usamos localStorage, pero aquí usamos DB para consistencia si quisiéramos)
+                // En este diseño simple, el audio depende de localStorage para no repeti en el mismo cliente, 
+                // pero si queremos que resetee para todos, deberíamos borrar flags en DB.
+                // Por simplicidad y eficacia, borraremos flags de DB si existieran, y el cliente manejará su estado.
+
+                const updates = {
+                    inicio: h,
+                    // Resetear flags webhooks
+                    alert_12_pre: null, alert_13_pre: null, alert_14_pre: null, alert_15_pre: null,
+                    alert_1h: null, alert_30m: null, alert_exp: null
+                };
+
+                // Remove audio flags from DB if we decide to store them there later.
+                // For now just webhooks.
+
+                // 2. Actualizar en Firebase
+                db.ref(`logs/${id}`).update(updates).then(() => {
+                    hideSheet('modal-defender');
+                    const webhookData = { ...currentData, inicio: h };
+                    sendDiscordWebhook(webhookData, 'DEFENDIDO');
+                });
+            });
+        }
+
+        // Helper para audio con "debounce" usando localStorage para que no suene en cada tick
+        function checkAudioTrigger(id, minutesLeft, triggerMinute, key) {
+            // Margen de error: entre triggerMinute y triggerMinute - 1 (ej 30 y 29)
+            // Esto permite que suene si el timer salta un segundo exacto
+            if (minutesLeft <= triggerMinute && minutesLeft > triggerMinute - 1) {
+                const storageKey = `played_${key}_${id}`;
+                const alreadyPlayed = localStorage.getItem(storageKey);
+
+                // Reset if time is far (safety check, though resetting on defend is better)
+                // Si ya sonó recientemente (hace menos de 2 min), ignorar
+                const lastPlayed = parseInt(alreadyPlayed || '0');
+                const now = Date.now();
+
+                if (!alreadyPlayed || (now - lastPlayed > 120000)) { // 2 min cooldown
+                    console.log("Playing audio for:", key);
+                    playAlertSound();
+                    localStorage.setItem(storageKey, now.toString());
+                }
+            }
+        }
+
+
+        // --- AUDIO SYSTEM ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playAlertSound() {
+            // Simple "Ding" sintetizado
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1046.5, audioCtx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        }
+
+        // --- AUDIO & INIT ---
+        function attemptAudio() {
+            const v = document.getElementById('video-fondo');
+            // Muted por defecto para autoplay, luego intentamos dar volumen si es posible o esperar interacción
+            v.muted = true;
+            v.play().then(() => {
+                // Si reproduce, intentamos poner el volumen guardado
+                const isMutedStorage = localStorage.getItem('video-muted') === '1';
+                if (!isMutedStorage) {
+                    v.muted = false;
+                    v.volume = 0.5;
+                }
+                updateMuteBtn();
+            }).catch(e => {
+                console.log("Autoplay bloqued, waiting for interaction", e);
+                // Si falla (política de navegador), mostrar UI de mute activo
+                v.muted = true;
+                updateMuteBtn();
+                // Listener global para activar audio al primer click
+                const unlockAudio = () => {
+                    v.muted = false;
+                    v.volume = 0.5;
+                    v.play();
+                    updateMuteBtn();
+                    document.removeEventListener('click', unlockAudio);
+                };
+                document.addEventListener('click', unlockAudio, { once: true });
+            });
+        }
+
+        function toggleMute() {
+            const v = document.getElementById('video-fondo');
+            v.muted = !v.muted;
+            localStorage.setItem('video-muted', v.muted ? '1' : '0');
+            updateMuteBtn();
+        }
+
+        function updateMuteBtn() {
+            const v = document.getElementById('video-fondo');
+            const btns = [document.getElementById('mute-btn'), document.getElementById('login-mute-btn')];
+
+            btns.forEach(btn => {
+                if (!btn) return;
+                if (v.muted) {
+                    btn.style.background = 'rgba(255, 69, 58, 0.2)';
+                    btn.style.color = 'var(--ios-red)';
+                    btn.innerHTML = '<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>';
+                } else {
+                    btn.style.background = 'var(--ios-blue)';
+                    if (btn.id === 'login-mute-btn') btn.style.background = 'rgba(255,255,255,0.2)';
+
+                    btn.style.color = 'white';
+                    btn.innerHTML = '<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 18.5l-5-3.5H4a1 1 0 01-1-1v-4a1 1 0 011-1h3l5-3.5v12z" /></svg>';
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>
